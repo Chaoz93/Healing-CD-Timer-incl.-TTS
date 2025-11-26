@@ -601,21 +601,6 @@
 
         const totalSec = mm * 60 + ss;
 
-        // Everything after the time => label base
-        let rest = line.slice(timeMatch.index + timeMatch[0].length).trim();
-        if (rest.startsWith("-")) rest = rest.replace(/^-\s*/, "");
-
-        // Label for "__all__" mode: strip formatting
-        let label = rest
-          .replace(/\{spell:\d+\}/g, "")
-          .replace(/\|cff[0-9A-Fa-f]{6}/g, "")
-          .replace(/\|r/g, "")
-          .replace(/\{text\}|\{\/text\}/g, "")
-          .replace(/\{everyone\}everyone/gi, "Everyone")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (!label) label = "Cooldown";
-
         // Extract actors + spellIDs: "Name {spell:123456}"
         const actorsMap = new Map(); // name -> Set(spellIds)
         const actorRegex = /([^\s{}|]+)\s*\{spell:(\d+)\}/g;
@@ -630,23 +615,22 @@
           allSpellIds.push(spellId);
         }
 
-        const actors = [];
         for (const [name, set] of actorsMap.entries()) {
-          actors.push({
+          const actor = {
             name,
             spellIds: Array.from(set),
+          };
+
+          parsed.push({
+            id: nextEventId++,
+            timeSec: totalSec,
+            label: buildActorSpellText(actor.name, actor.spellIds),
+            enabled: true,
+            fired: false,
+            warned: false,
+            actors: [actor],
           });
         }
-
-        parsed.push({
-          id: nextEventId++,
-          timeSec: totalSec,
-          label,
-          enabled: true,
-          fired: false,
-          warned: false,
-          actors,
-        });
       }
 
       // Sort events by time
