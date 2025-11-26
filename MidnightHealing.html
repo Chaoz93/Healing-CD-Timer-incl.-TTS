@@ -34,7 +34,7 @@
     }
 
     .app {
-      width: min(1200px, 100%);
+      width: min(1400px, 100%);
       background: linear-gradient(135deg, #050b12, #091523);
       border-radius: 22px;
       box-shadow: var(--shadow-soft);
@@ -255,7 +255,7 @@
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
       background: #050a11;
-      max-height: 380px;
+      max-height: 760px;
       overflow: auto;
       padding: 4px;
       display: flex;
@@ -266,7 +266,7 @@
 
     .events-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) 360px;
+      grid-template-columns: minmax(0, 1.6fr) minmax(380px, 1fr);
       gap: 12px;
       align-items: start;
     }
@@ -364,7 +364,7 @@
       border-radius: var(--radius-sm);
       padding: 10px;
       background: linear-gradient(180deg, rgba(30, 144, 255, 0.08), rgba(5, 10, 17, 0.7));
-      min-height: 320px;
+      min-height: 480px;
     }
 
     .timeline-header {
@@ -389,7 +389,7 @@
 
     .timeline-axis {
       position: relative;
-      height: 320px;
+      height: 480px;
       border-radius: 10px;
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
       overflow: visible;
