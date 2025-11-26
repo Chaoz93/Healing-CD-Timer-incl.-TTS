@@ -5,7 +5,7 @@
   <title>Healing CD Timer with TTS & Wowhead</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    :root {
+:root {
       --bg: #050b12;
       --bg-alt: #0b1724;
       --accent: #1e90ff;
@@ -18,6 +18,7 @@
       --radius-sm: 8px;
       --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.45);
       --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --timeline-height: 760px;
     }
 
     * { box-sizing: border-box; }
@@ -255,7 +256,7 @@
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
       background: #050a11;
-      max-height: 760px;
+      max-height: var(--timeline-height);
       overflow: auto;
       padding: 4px;
       display: flex;
@@ -364,7 +365,7 @@
       border-radius: var(--radius-sm);
       padding: 10px;
       background: linear-gradient(180deg, rgba(30, 144, 255, 0.08), rgba(5, 10, 17, 0.7));
-      min-height: 480px;
+      min-height: var(--timeline-height);
     }
 
     .timeline-header {
@@ -389,7 +390,7 @@
 
     .timeline-axis {
       position: relative;
-      height: 480px;
+      height: var(--timeline-height);
       border-radius: 10px;
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
       overflow: visible;
