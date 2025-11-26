@@ -1278,33 +1278,26 @@
       renderTimeline(0);
     });
 
-    // ==== Global hotkeys (F9/F10/F11) ================================
-    // Listen globally for the three function keys and forward them to the
-    // existing buttons. Using "keydown" with capture=true and an early return
-    // for modifiers prevents side-effects with in-page shortcuts or form
-    // controls. repeat-check avoids spamming when a key is held down.
+    // ==== Global hotkeys (F13/F14/F15 via AutoHotkey) ==================
+    // AutoHotkey sends F13–F15 so we keep them separate from the real F1–F12
+    // keys used by the OS/browser. This simply forwards those virtual keys to
+    // the existing buttons without changing any timer logic.
     const HOTKEY_TARGETS = {
-      F9: startBtn,
-      F10: pauseBtn,
-      F11: resetBtn,
+      F13: startBtn,
+      F14: pauseBtn,
+      F15: resetBtn,
     };
 
-    window.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.defaultPrevented || event.repeat) return;
-        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    window.addEventListener("keydown", (event) => {
+      if (event.repeat) return; // ignore held keys
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
 
-        const target = HOTKEY_TARGETS[event.code];
-        if (!target) return;
+      const target = HOTKEY_TARGETS[event.code];
+      if (!target) return;
 
-        // Prevent the browser from using the function key (e.g. F11 fullscreen)
-        // and forward the intent to the respective control button.
-        event.preventDefault();
-        target.click();
-      },
-      { capture: true }
-    );
+      event.preventDefault(); // block default browser handling
+      target.click(); // simulate the respective button click
+    });
 
     // Initial state
     updateHideOthersButton();
