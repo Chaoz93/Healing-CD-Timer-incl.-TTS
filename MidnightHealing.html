@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Healing CD Timer with TTS & Wowhead</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050b12;
+      --bg-alt: #0b1724;
+      --accent: #1e90ff;
+      --accent-soft: rgba(30, 144, 255, 0.16);
+      --border: #24354a;
+      --text: #f5f7fb;
+      --text-soft: #a9b6cc;
+      --danger: #ff4d6a;
+      --radius-lg: 14px;
+      --radius-sm: 8px;
+      --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.45);
+      --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #12263c 0, #030910 55%);
+      color: var(--text);
+      font-family: var(--font-main);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .app {
+      width: min(1200px, 100%);
+      background: linear-gradient(135deg, #050b12, #091523);
+      border-radius: 22px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .app-header h1 {
+      margin: 0;
+      font-size: 1.3rem;
+      letter-spacing: 0.04em;
+    }
+
+    .app-header p {
+      margin: 4px 0 0;
+      font-size: 0.85rem;
+      color: var(--text-soft);
+    }
+
+    .pill {
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-soft);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+      gap: 14px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: radial-gradient(circle at top left, #19263a 0, #050b11 55%);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-soft);
+    }
+
+    .card-header small {
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    label {
+      font-size: 0.78rem;
+      color: var(--text-soft);
+      margin-bottom: 3px;
+      display: block;
+    }
+
+    textarea,
+    input[type="number"],
+    select {
+      width: 100%;
+      background: #050a11;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      padding: 7px 9px;
+      color: var(--text);
+      font-family: monospace;
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    textarea:focus,
+    input[type="number"]:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(30, 144, 255, 0.4);
+    }
+
+    button {
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--accent-soft);
+      color: var(--text);
+      font-size: 0.8rem;
+      padding: 6px 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    button.secondary {
+      background: transparent;
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+    button.danger {
+      background: rgba(255, 77, 106, 0.22);
+      border-color: rgba(255, 77, 106, 0.8);
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .hint code {
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-size: 0.74rem;
+    }
+
+    .timer-display {
+      font-variant-numeric: tabular-nums;
+      font-size: 1.7rem;
+      font-weight: 600;
+    }
+
+    .timer-sub {
+      font-size: 0.8rem;
+      color: var(--text-soft);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .small-input {
+      max-width: 70px;
+    }
+
+    .toggle-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .toggle-row input[type="checkbox"] {
+      accent-color: var(--accent);
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #737f93;
+      margin-right: 4px;
+      display: inline-block;
+    }
+    .status-dot.live {
+      background: #38d996;
+      box-shadow: 0 0 8px rgba(56, 217, 150, 0.8);
+    }
+
+    .events-list {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #050a11;
+      max-height: 380px;
+      overflow: auto;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.8rem;
+    }
+
+    .event-row {
+      display: grid;
+      grid-template-columns: 26px 65px minmax(0, 1.4fr) 26px 26px;
+      gap: 6px;
+      align-items: center;
+      padding: 4px 6px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      cursor: grab;
+    }
+
+    .event-row.fired {
+      opacity: 0.6;
+      background: rgba(0, 255, 128, 0.06);
+      border-color: rgba(0, 255, 128, 0.4);
+    }
+
+    .event-row .drag {
+      text-align: center;
+      color: var(--text-soft);
+      cursor: grab;
+      font-size: 0.9rem;
+    }
+
+    .event-row .time-cell {
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      padding: 2px 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .event-row .text-cell {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-row button {
+      padding-inline: 0;
+      justify-content: center;
+    }
+
+    .event-row input[type="checkbox"] {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="app-header">
+      <div>
+        <h1>Healing CD Timer &amp; TTS</h1>
+        <p>Paste your MRT / ExRT note, select your name, hear your spells (from Wowhead) in English.</p>
+      </div>
+      <div class="pill">Local · HTML + JS · TTS + Wowhead</div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT: IMPORT + TIMER -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Import</h2>
+          <small>Supports your "Testimport" format</small>
+        </div>
+
+        <div>
+          <label for="planInput">Paste plan (one line per time window)</label>
+          <textarea id="planInput" placeholder="Paste your plan here (including {time:...}, {spell:...}, |cff...|r etc.)"></textarea>
+          <div class="controls-row">
+            <button id="parseBtn">Parse to events</button>
+            <button id="clearBtn" class="secondary">Clear events</button>
+          </div>
+          <p class="hint">
+            Example:<br>
+            <code>{time:0:05}0:05 - Chaozdormu {spell:359816}  Chaozdormu {spell:370537}</code><br>
+            ⇒ Time = <code>0:05</code>, Player: <code>Chaozdormu</code>, Spells: <code>359816, 370537</code>.
+          </p>
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:6px 0 10px;">
+
+        <div class="card-header">
+          <h2>Fight timer</h2>
+          <div>
+            <div class="timer-display" id="timerDisplay">00:00</div>
+            <div class="timer-sub">Fight time</div>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <button id="startBtn">▶ Start</button>
+          <button id="pauseBtn" class="secondary">⏸ Pause</button>
+          <button id="resetBtn" class="secondary">⏹ Reset</button>
+
+          <span class="badge">
+            Lead time:
+            <input type="number" id="leadTimeInput" class="small-input" value="3" min="0" /> s
+          </span>
+        </div>
+
+        <div class="toggle-row">
+          <label><input type="checkbox" id="speechToggle" checked /> Text-to-Speech (en-US)</label>
+          <label><input type="checkbox" id="beepToggle" checked /> Beep sound</label>
+        </div>
+
+        <div class="toggle-row">
+          <label style="display:flex;align-items:center;gap:6px;">
+            Announce for:
+            <select id="actorFilter">
+              <option value="__all__">All players / full event</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <label>
+            <input type="checkbox" id="wowheadToggle" checked />
+            Fetch spell names from Wowhead (English, cached)
+          </label>
+        </div>
+
+        <p class="hint">
+          Mode:
+          <br>• <code>All players</code> ⇒ generic event label (raid call)
+          <br>• specific player (e.g. <code>Chaozdormu</code>) ⇒ only that player's events, with English spell names from Wowhead.
+        </p>
+
+        <div class="status-bar">
+          <div>
+            <span class="status-dot" id="timerStatusDot"></span>
+            <span id="timerStatusText">Timer ready</span>
+          </div>
+          <div>Events: <span id="eventCount">0</span></div>
+        </div>
+      </section>
+
+      <!-- RIGHT: EVENTS -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Events</h2>
+          <small>Drag &amp; drop, enable/disable</small>
+        </div>
+
+        <div class="events-list" id="eventsList">
+          <!-- Dynamic -->
+        </div>
+
+        <p class="hint">
+          Parser automatically strips: <code>{time:...}</code>, <code>{spell:ID}</code>, <code>|cffXXXXXX</code>, <code>|r</code>, <code>{text}</code>, <code>{/text}</code>.<br>
+          <code>{everyone}everyone {text}Personals{/text}</code> becomes e.g. "Everyone Personals" for the event label.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ==== Wowhead configuration ======================================
+    const WOWHEAD_PROXY_BASE = "https://corsproxy.io/?";
+    const SPELL_CACHE_KEY = "cdTimer_spellNamesCache_en_v1";
+
+    // Load cache from localStorage
+    let SPELL_NAMES = {};
+    try {
+      const stored = localStorage.getItem(SPELL_CACHE_KEY);
+      if (stored) SPELL_NAMES = JSON.parse(stored);
+    } catch (e) {
+      SPELL_NAMES = {};
+    }
+
+    function saveSpellCache() {
+      try {
+        localStorage.setItem(SPELL_CACHE_KEY, JSON.stringify(SPELL_NAMES));
+      } catch (e) {
+        console.warn("Could not save spell cache:", e);
+      }
+    }
+
+    async function fetchSpellNameFromWowhead(spellId, wowheadToggle) {
+      const id = String(spellId);
+      if (SPELL_NAMES[id]) return SPELL_NAMES[id];
+      if (!wowheadToggle.checked) return null;
+
+      try {
+        const targetUrl =
+          "https://www.wowhead.com/spell=" + encodeURIComponent(id) + "&locale=en_US";
+        const url = WOWHEAD_PROXY_BASE + encodeURIComponent(targetUrl);
+
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          console.warn("Wowhead request failed for spell", id, resp.status);
+          return null;
+        }
+        const html = await resp.text();
+
+        const match = html.match(/<title>([^<]+)- Spell - World of Warcraft<\/title>/i);
+        if (match && match[1]) {
+          const rawName = match[1].trim();
+          if (rawName) {
+            SPELL_NAMES[id] = rawName;
+            saveSpellCache();
+            return rawName;
+          }
+        }
+      } catch (e) {
+        console.warn("Error while loading Wowhead for spell", id, e);
+      }
+      return null;
+    }
+
+    async function prefetchSpellNames(spellIds, wowheadToggle) {
+      const unique = Array.from(new Set(spellIds.map((id) => String(id))));
+      for (const id of unique) {
+        if (!SPELL_NAMES[id]) {
+          await fetchSpellNameFromWowhead(id, wowheadToggle);
+        }
+      }
+    }
+
+    // ==== Data model ==================================================
+    let events = [];
+    let nextEventId = 1;
+
+    // Timer
+    let timerRunning = false;
+    let timerStart = null; // performance.now()
+    let accumulatedMs = 0;
+    let rafId = null;
+
+    // DOM refs
+    const planInput = document.getElementById("planInput");
+    const parseBtn = document.getElementById("parseBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const eventsList = document.getElementById("eventsList");
+    const timerDisplay = document.getElementById("timerDisplay");
+    const startBtn = document.getElementById("startBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const leadTimeInput = document.getElementById("leadTimeInput");
+    const eventCountSpan = document.getElementById("eventCount");
+    const timerStatusDot = document.getElementById("timerStatusDot");
+    const timerStatusText = document.getElementById("timerStatusText");
+    const speechToggle = document.getElementById("speechToggle");
+    const beepToggle = document.getElementById("beepToggle");
+    const actorFilter = document.getElementById("actorFilter");
+    const wowheadToggle = document.getElementById("wowheadToggle");
+
+    // ==== Helpers =====================================================
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function setStatus(text, live) {
+      timerStatusText.textContent = text;
+      if (live) timerStatusDot.classList.add("live");
+      else timerStatusDot.classList.remove("live");
+    }
+
+    // Beep
+    let audioCtx = null;
+    function beep(duration = 150, freq = 880) {
+      if (!beepToggle.checked) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+        osc.stop(audioCtx.currentTime + duration / 1000);
+      } catch (e) {
+        console.warn("Beep failed:", e);
+      }
+    }
+
+    // TTS (English)
+    function speak(text) {
+      if (!speechToggle.checked) return;
+      if (!("speechSynthesis" in window)) {
+        console.warn("SpeechSynthesis not available.");
+        return;
+      }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      window.speechSynthesis.speak(u);
+    }
+
+    function joinSpellNames(spellIds) {
+      const names = spellIds.map((id) => SPELL_NAMES[String(id)] || `Spell ${id}`);
+      if (names.length === 0) return "";
+      if (names.length === 1) return names[0];
+      if (names.length === 2) return `${names[0]} and ${names[1]}`;
+      const last = names.pop();
+      return `${names.join(", ")} and ${last}`;
+    }
+
+    function buildActorSpellText(name, spellIds) {
+      const base = name || "Player";
+      const spellsText = joinSpellNames(spellIds);
+      if (!spellsText) return base;
+      return `${base}: ${spellsText}`;
+    }
+
+    // ==== Parsing of your format ======================================
+    async function parsePlanText() {
+      const text = planInput.value || "";
+      const lines = text.split(/\r?\n/);
+      const parsed = [];
+      const actorSet = new Set();
+      const allSpellIds = [];
+
+      for (const rawLine of lines) {
+        let line = rawLine.trim();
+        if (!line) continue;
+
+        // Remove {time:...} at the beginning
+        line = line.replace(/\{time:[^}]+\}/, "").trim();
+
+        // Visible time M:SS or MM:SS
+        const timeMatch = line.match(/(\d{1,2}):(\d{2})/);
+        if (!timeMatch) continue;
+
+        const mm = parseInt(timeMatch[1], 10);
+        const ss = parseInt(timeMatch[2], 10);
+        if (Number.isNaN(mm) || Number.isNaN(ss)) continue;
+
+        const totalSec = mm * 60 + ss;
+
+        // Everything after the time => label base
+        let rest = line.slice(timeMatch.index + timeMatch[0].length).trim();
+        if (rest.startsWith("-")) rest = rest.replace(/^-\s*/, "");
+
+        // Label for "__all__" mode: strip formatting
+        let label = rest
+          .replace(/\{spell:\d+\}/g, "")
+          .replace(/\|cff[0-9A-Fa-f]{6}/g, "")
+          .replace(/\|r/g, "")
+          .replace(/\{text\}|\{\/text\}/g, "")
+          .replace(/\{everyone\}everyone/gi, "Everyone")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!label) label = "Cooldown";
+
+        // Extract actors + spellIDs: "Name {spell:123456}"
+        const actorsMap = new Map(); // name -> Set(spellIds)
+        const actorRegex = /([^\s{}|]+)\s*\{spell:(\d+)\}/g;
+        let m;
+        while ((m = actorRegex.exec(line)) !== null) {
+          const actorName = m[1].trim();
+          const spellId = parseInt(m[2], 10);
+          if (!actorName || Number.isNaN(spellId)) continue;
+          if (!actorsMap.has(actorName)) actorsMap.set(actorName, new Set());
+          actorsMap.get(actorName).add(spellId);
+          actorSet.add(actorName);
+          allSpellIds.push(spellId);
+        }
+
+        const actors = [];
+        for (const [name, set] of actorsMap.entries()) {
+          actors.push({
+            name,
+            spellIds: Array.from(set),
+          });
+        }
+
+        parsed.push({
+          id: nextEventId++,
+          timeSec: totalSec,
+          label,
+          enabled: true,
+          fired: false,
+          warned: false,
+          actors,
+        });
+      }
+
+      // Sort events by time
+      parsed.sort((a, b) => a.timeSec - b.timeSec);
+      events = parsed;
+
+      // Prefetch spell names if desired
+      if (allSpellIds.length && wowheadToggle.checked) {
+        setStatus("Fetching spell names from Wowhead…", false);
+        await prefetchSpellNames(allSpellIds, wowheadToggle);
+      }
+
+      renderEvents();
+      updateEventCount();
+      updateActorFilter(actorSet);
+      setStatus("Events updated", false);
+    }
+
+    function updateActorFilter(actorSet) {
+      const previous = actorFilter.value;
+      actorFilter.innerHTML = "";
+      const optAll = document.createElement("option");
+      optAll.value = "__all__";
+      optAll.textContent = "All players / full event";
+      actorFilter.appendChild(optAll);
+
+      const sortedActors = Array.from(actorSet).sort((a, b) => a.localeCompare(b, "de"));
+      for (const name of sortedActors) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        actorFilter.appendChild(opt);
+      }
+
+      const found = Array.from(actorFilter.options).some((o) => o.value === previous);
+      if (found) actorFilter.value = previous;
+      else actorFilter.value = "__all__";
+    }
+
+    // ==== Render events + drag & drop =================================
+    function renderEvents() {
+      eventsList.innerHTML = "";
+      if (events.length === 0) {
+        const div = document.createElement("div");
+        div.style.padding = "6px";
+        div.style.color = "var(--text-soft)";
+        div.textContent =
+          "No events yet. Paste your plan above and click \"Parse to events\".";
+        eventsList.appendChild(div);
+        return;
+      }
+
+      for (const ev of events) {
+        const row = document.createElement("div");
+        row.className = "event-row" + (ev.fired ? " fired" : "");
+        row.draggable = true;
+        row.dataset.id = ev.id;
+        row.id = "event-row-" + ev.id;
+
+        // Drag handle
+        const dragCell = document.createElement("div");
+        dragCell.className = "drag";
+        dragCell.textContent = "☰";
+        row.appendChild(dragCell);
+
+        // Time
+        const timeCell = document.createElement("div");
+        timeCell.className = "time-cell";
+        timeCell.textContent = formatTime(ev.timeSec);
+        row.appendChild(timeCell);
+
+        // Label
+        const textCell = document.createElement("div");
+        textCell.className = "text-cell";
+        textCell.title = ev.label;
+        textCell.textContent = ev.label;
+        row.appendChild(textCell);
+
+        // Enabled checkbox
+        const checkCell = document.createElement("div");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = ev.enabled;
+        cb.addEventListener("change", () => {
+          ev.enabled = cb.checked;
+        });
+        checkCell.appendChild(cb);
+        row.appendChild(checkCell);
+
+        // Delete
+        const delCell = document.createElement("div");
+        const delBtn = document.createElement("button");
+        delBtn.className = "secondary";
+        delBtn.textContent = "✕";
+        delBtn.title = "Remove event";
+        delBtn.addEventListener("click", () => {
+          events = events.filter((e) => e.id !== ev.id);
+          renderEvents();
+          updateEventCount();
+        });
+        delCell.appendChild(delBtn);
+        row.appendChild(delCell);
+
+        // Drag & drop events
+        row.addEventListener("dragstart", onDragStart);
+        row.addEventListener("dragover", onDragOver);
+        row.addEventListener("drop", onDrop);
+        row.addEventListener("dragend", onDragEnd);
+
+        eventsList.appendChild(row);
+      }
+    }
+
+    let dragSrcId = null;
+    function onDragStart(e) {
+      dragSrcId = this.dataset.id;
+      e.dataTransfer.effectAllowed = "move";
+    }
+    function onDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
+    function onDrop(e) {
+      e.stopPropagation();
+      const targetId = this.dataset.id;
+      if (dragSrcId === null || dragSrcId === targetId) return;
+
+      const srcIndex = events.findIndex((ev) => String(ev.id) === String(dragSrcId));
+      const targetIndex = events.findIndex((ev) => String(ev.id) === String(targetId));
+      if (srcIndex === -1 || targetIndex === -1) return;
+
+      const [moved] = events.splice(srcIndex, 1);
+      events.splice(targetIndex, 0, moved);
+      renderEvents();
+      return false;
+    }
+    function onDragEnd() {
+      dragSrcId = null;
+    }
+
+    function updateEventCount() {
+      eventCountSpan.textContent = events.length;
+    }
+
+    // ==== Timer logic =================================================
+    function getCurrentFightSec() {
+      if (!timerRunning || timerStart === null)
+        return Math.floor(accumulatedMs / 1000);
+      const now = performance.now();
+      const totalMs = accumulatedMs + (now - timerStart);
+      return Math.floor(totalMs / 1000);
+    }
+
+    function updateTimerLoop() {
+      if (!timerRunning) return;
+      const sec = getCurrentFightSec();
+      timerDisplay.textContent = formatTime(sec);
+      checkEventTriggers(sec);
+      rafId = requestAnimationFrame(updateTimerLoop);
+    }
+
+    function checkEventTriggers(currentSec) {
+      const lead = parseInt(leadTimeInput.value, 10);
+      const leadTime = Number.isNaN(lead) ? 0 : Math.max(0, lead);
+      const filter = actorFilter.value; // "__all__" or player name
+
+      for (const ev of events) {
+        if (!ev.enabled) continue;
+
+        let actorEntry = null;
+        if (filter !== "__all__") {
+          actorEntry = ev.actors.find((a) => a.name === filter);
+          if (!actorEntry) continue;
+        }
+
+        // Lead warning
+        if (
+          !ev.warned &&
+          leadTime > 0 &&
+          currentSec >= ev.timeSec - leadTime &&
+          currentSec < ev.timeSec
+        ) {
+          ev.warned = true;
+          if (!ev.fired) {
+            beep(120, 1100);
+            if (filter === "__all__") {
+              speak(`${ev.label} in ${leadTime} seconds`);
+            } else {
+              const text = buildActorSpellText(
+                actorEntry.name,
+                actorEntry.spellIds
+              );
+              speak(`${text} in ${leadTime} seconds`);
+            }
+          }
+        }
+
+        // Main trigger
+        if (!ev.fired && currentSec >= ev.timeSec) {
+          ev.fired = true;
+          beep(180, 700);
+          if (filter === "__all__") {
+            speak(`${ev.label} now`);
+          } else {
+            const text = buildActorSpellText(
+              actorEntry.name,
+              actorEntry.spellIds
+            );
+            speak(`${text} now`);
+          }
+
+          const row = document.getElementById("event-row-" + ev.id);
+          if (row) row.classList.add("fired");
+        }
+      }
+    }
+
+    // ==== Button handlers =============================================
+    parseBtn.addEventListener("click", () => {
+      parsePlanText();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      events = [];
+      renderEvents();
+      updateEventCount();
+      updateActorFilter(new Set());
+      setStatus("Events cleared", false);
+    });
+
+    startBtn.addEventListener("click", () => {
+      if (timerRunning) return;
+      beep(50, 600);
+      timerRunning = true;
+      timerStart = performance.now();
+      setStatus("Timer running", true);
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateTimerLoop);
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      if (!timerRunning) return;
+      const now = performance.now();
+      accumulatedMs += now - timerStart;
+      timerRunning = false;
+      timerStart = null;
+      if (rafId) cancelAnimationFrame(rafId);
+      setStatus("Timer paused", false);
+    });
+
+    resetBtn.addEventListener("click", () => {
+      timerRunning = false;
+      timerStart = null;
+      accumulatedMs = 0;
+      if (rafId) cancelAnimationFrame(rafId);
+      timerDisplay.textContent = "00:00";
+      for (const ev of events) {
+        ev.fired = false;
+        ev.warned = false;
+      }
+      renderEvents();
+      setStatus("Timer reset", false);
+    });
+
+    // Initial state
+    setStatus("Timer ready", false);
+  </script>
+</body>
+</html>
