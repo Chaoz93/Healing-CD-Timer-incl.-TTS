@@ -282,6 +282,16 @@
       border-color: rgba(0, 255, 128, 0.4);
     }
 
+    .event-row.highlight {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(30, 144, 255, 0.35);
+      background: linear-gradient(135deg, rgba(30, 144, 255, 0.12), rgba(255, 255, 255, 0.02));
+    }
+
+    .event-row.dimmed {
+      opacity: 0.45;
+    }
+
     .event-row .drag {
       text-align: center;
       color: var(--text-soft);
@@ -295,12 +305,29 @@
       padding: 2px 4px;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .event-row .text-cell {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .event-row .time-input {
+      width: 64px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .event-row .time-input:focus {
+      outline: none;
     }
 
     .event-row button {
@@ -310,6 +337,11 @@
 
     .event-row input[type="checkbox"] {
       cursor: pointer;
+    }
+
+    button.active {
+      box-shadow: inset 0 0 0 1px var(--accent);
+      border-color: var(--accent);
     }
   </style>
 </head>
@@ -405,8 +437,14 @@
       <!-- RIGHT: EVENTS -->
       <section class="card">
         <div class="card-header">
-          <h2>Events</h2>
-          <small>Drag &amp; drop, enable/disable</small>
+          <div>
+            <h2>Events</h2>
+            <small>Drag &amp; drop, enable/disable</small>
+          </div>
+          <div class="controls-row" style="margin:0;flex-wrap:nowrap;justify-content:flex-end;">
+            <button id="hideOthersBtn" class="secondary" title="Nur ausgewählten Spieler anzeigen">Andere ausblenden</button>
+            <button id="exportBtn" title="Events als JSON exportieren">⬇ Export</button>
+          </div>
         </div>
 
         <div class="events-list" id="eventsList">
@@ -487,6 +525,7 @@
     // ==== Data model ==================================================
     let events = [];
     let nextEventId = 1;
+    let hideOthers = false;
 
     // Timer
     let timerRunning = false;
@@ -511,12 +550,32 @@
     const beepToggle = document.getElementById("beepToggle");
     const actorFilter = document.getElementById("actorFilter");
     const wowheadToggle = document.getElementById("wowheadToggle");
+    const hideOthersBtn = document.getElementById("hideOthersBtn");
+    const exportBtn = document.getElementById("exportBtn");
 
     // ==== Helpers =====================================================
     function formatTime(sec) {
       const m = Math.floor(sec / 60);
       const s = sec % 60;
       return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function parseTimeInput(value) {
+      if (!value) return null;
+      const match = value.trim().match(/^(\d+):(\d{1,2})$/);
+      if (!match) return null;
+      const minutes = parseInt(match[1], 10);
+      const seconds = parseInt(match[2], 10);
+      if (Number.isNaN(minutes) || Number.isNaN(seconds) || seconds >= 60) return null;
+      return minutes * 60 + seconds;
+    }
+
+    function containsActor(ev, actorName) {
+      return ev.actors.some((a) => a.name === actorName);
+    }
+
+    function sortEventsByTime() {
+      events.sort((a, b) => a.timeSec - b.timeSec || a.id - b.id);
     }
 
     function setStatus(text, live) {
@@ -670,11 +729,26 @@
       const found = Array.from(actorFilter.options).some((o) => o.value === previous);
       if (found) actorFilter.value = previous;
       else actorFilter.value = "__all__";
+
+      updateHideOthersButton();
+    }
+
+    function updateHideOthersButton() {
+      const hasSelection = actorFilter.value !== "__all__";
+      if (!hasSelection) hideOthers = false;
+
+      hideOthersBtn.disabled = !hasSelection;
+      hideOthersBtn.classList.toggle("active", hideOthers && hasSelection);
+      hideOthersBtn.textContent = hideOthers && hasSelection ? "Alle anzeigen" : "Andere ausblenden";
+      hideOthersBtn.title = hasSelection
+        ? "Blendet alle Events außer dem ausgewählten Spieler aus"
+        : "Wähle einen Spieler aus, um andere auszublenden";
     }
 
     // ==== Render events + drag & drop =================================
     function renderEvents() {
       const filter = actorFilter.value;
+      const selectedActor = filter === "__all__" ? null : filter;
       eventsList.innerHTML = "";
       if (events.length === 0) {
         const div = document.createElement("div");
@@ -687,8 +761,13 @@
       }
 
       for (const ev of events) {
+        const matchesSelected = selectedActor ? containsActor(ev, selectedActor) : false;
+        if (selectedActor && hideOthers && !matchesSelected) continue;
+
         const row = document.createElement("div");
         row.className = "event-row" + (ev.fired ? " fired" : "");
+        if (matchesSelected) row.classList.add("highlight");
+        else if (selectedActor) row.classList.add("dimmed");
         row.draggable = true;
         row.dataset.id = ev.id;
         row.id = "event-row-" + ev.id;
@@ -702,7 +781,14 @@
         // Time
         const timeCell = document.createElement("div");
         timeCell.className = "time-cell";
-        timeCell.textContent = formatTime(ev.timeSec);
+        const timeInput = document.createElement("input");
+        timeInput.type = "text";
+        timeInput.inputMode = "numeric";
+        timeInput.className = "time-input";
+        timeInput.value = formatTime(ev.timeSec);
+        timeInput.addEventListener("change", () => handleTimeEdit(ev, timeInput));
+        timeInput.addEventListener("blur", () => handleTimeEdit(ev, timeInput));
+        timeCell.appendChild(timeInput);
         row.appendChild(timeCell);
 
         // Label
@@ -756,6 +842,21 @@
       }
     }
 
+    function handleTimeEdit(ev, input) {
+      const newSec = parseTimeInput(input.value);
+      if (newSec === null) {
+        input.value = formatTime(ev.timeSec);
+        return;
+      }
+
+      ev.timeSec = newSec;
+      ev.fired = false;
+      ev.warned = false;
+      sortEventsByTime();
+      renderEvents();
+      setStatus("Event time updated", false);
+    }
+
     let dragSrcId = null;
     function onDragStart(e) {
       dragSrcId = this.dataset.id;
@@ -785,6 +886,31 @@
 
     function updateEventCount() {
       eventCountSpan.textContent = events.length;
+    }
+
+    function exportEvents() {
+      if (!events.length) {
+        setStatus("No events to export", false);
+        return;
+      }
+
+      const payload = events.map((ev) => ({
+        time: formatTime(ev.timeSec),
+        label: ev.label,
+        actors: ev.actors,
+        enabled: ev.enabled,
+      }));
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "events-export.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      setStatus("Events exported", false);
     }
 
     // ==== Timer logic =================================================
@@ -855,6 +981,22 @@
     }
 
     // ==== Button handlers =============================================
+    actorFilter.addEventListener("change", () => {
+      updateHideOthersButton();
+      renderEvents();
+    });
+
+    hideOthersBtn.addEventListener("click", () => {
+      if (actorFilter.value === "__all__") return;
+      hideOthers = !hideOthers;
+      updateHideOthersButton();
+      renderEvents();
+    });
+
+    exportBtn.addEventListener("click", () => {
+      exportEvents();
+    });
+
     parseBtn.addEventListener("click", () => {
       parsePlanText();
     });
@@ -902,6 +1044,7 @@
     });
 
     // Initial state
+    updateHideOthersButton();
     setStatus("Timer ready", false);
   </script>
 </body>
