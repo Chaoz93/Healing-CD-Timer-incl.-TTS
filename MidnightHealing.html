@@ -995,12 +995,13 @@
       timelineMarkerMid.style.bottom = `${midPos}%`;
 
       timelineTrack.innerHTML = "";
-      const upcoming = events.filter(
-        (ev) =>
-          ev.enabled &&
-          ev.timeSec >= currentSec &&
-          ev.timeSec <= currentSec + TIMELINE_WINDOW
-      );
+      const upcoming = events.filter((ev) => {
+        if (!ev.enabled) return false;
+        if (ev.timeSec < currentSec || ev.timeSec > currentSec + TIMELINE_WINDOW) return false;
+
+        if (selectedActor && hideOthers && !containsActor(ev, selectedActor)) return false;
+        return true;
+      });
 
       for (const ev of upcoming) {
         const card = document.createElement("div");
