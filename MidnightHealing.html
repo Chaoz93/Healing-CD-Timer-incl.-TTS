@@ -688,6 +688,7 @@
 
     // ==== Render events + drag & drop =================================
     function renderEvents() {
+      const filter = actorFilter.value;
       eventsList.innerHTML = "";
       if (events.length === 0) {
         const div = document.createElement("div");
@@ -721,8 +722,17 @@
         // Label
         const textCell = document.createElement("div");
         textCell.className = "text-cell";
-        textCell.title = ev.label;
-        textCell.textContent = ev.label;
+        let displayLabel = ev.label;
+
+        if (filter !== "__all__") {
+          const actorEntry = ev.actors.find((a) => a.name === filter);
+          if (actorEntry) {
+            displayLabel = buildActorSpellText(actorEntry.name, actorEntry.spellIds);
+          }
+        }
+
+        textCell.title = displayLabel;
+        textCell.textContent = displayLabel;
         row.appendChild(textCell);
 
         // Enabled checkbox
@@ -835,10 +845,7 @@
             if (filter === "__all__") {
               speak(`${ev.label} in ${leadTime} seconds`);
             } else {
-              const text = buildActorSpellText(
-                actorEntry.name,
-                actorEntry.spellIds
-              );
+              const text = joinSpellNames(actorEntry.spellIds) || ev.label;
               speak(`${text} in ${leadTime} seconds`);
             }
           }
@@ -851,10 +858,7 @@
           if (filter === "__all__") {
             speak(`${ev.label} now`);
           } else {
-            const text = buildActorSpellText(
-              actorEntry.name,
-              actorEntry.spellIds
-            );
+            const text = joinSpellNames(actorEntry.spellIds) || ev.label;
             speak(`${text} now`);
           }
 
