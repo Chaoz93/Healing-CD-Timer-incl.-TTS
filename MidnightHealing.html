@@ -608,7 +608,9 @@
         while ((m = actorRegex.exec(line)) !== null) {
           const actorName = m[1].trim();
           const spellId = parseInt(m[2], 10);
-          if (!actorName || Number.isNaN(spellId)) continue;
+          // Ignore tokens that look like time stamps (e.g. "0:29") so the filter
+          // dropdown only shows real player names.
+          if (!actorName || /^(\d{1,2}):(\d{2})$/.test(actorName) || Number.isNaN(spellId)) continue;
           if (!actorsMap.has(actorName)) actorsMap.set(actorName, new Set());
           actorsMap.get(actorName).add(spellId);
           actorSet.add(actorName);
