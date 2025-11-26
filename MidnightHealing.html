@@ -264,6 +264,21 @@
       font-size: 0.8rem;
     }
 
+    .events-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) 360px;
+      gap: 12px;
+      align-items: start;
+    }
+    .events-column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    @media (max-width: 1150px) {
+      .events-layout { grid-template-columns: 1fr; }
+    }
+
     .event-row {
       display: grid;
       grid-template-columns: 26px 65px minmax(0, 1.4fr) 26px 26px;
@@ -342,6 +357,117 @@
     button.active {
       box-shadow: inset 0 0 0 1px var(--accent);
       border-color: var(--accent);
+    }
+
+    .timeline-panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      background: linear-gradient(180deg, rgba(30, 144, 255, 0.08), rgba(5, 10, 17, 0.7));
+      min-height: 320px;
+    }
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .timeline-title {
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      color: var(--text-soft);
+    }
+
+    .timeline-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-soft);
+      opacity: 0.9;
+    }
+
+    .timeline-axis {
+      position: relative;
+      height: 320px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+      overflow: visible;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .timeline-line {
+      position: absolute;
+      left: 10px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(30, 144, 255, 0.8), rgba(30, 144, 255, 0.1));
+    }
+
+    .timeline-marker {
+      position: absolute;
+      left: 16px;
+      transform: translateY(50%);
+      font-size: 0.72rem;
+      color: var(--text-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .timeline-marker::before {
+      content: "";
+      width: 10px;
+      height: 1px;
+      background: var(--text-soft);
+      opacity: 0.7;
+    }
+
+    .timeline-marker.middle::before {
+      width: 14px;
+      background: var(--accent);
+      box-shadow: 0 0 6px rgba(30, 144, 255, 0.6);
+    }
+
+    .timeline-track {
+      position: absolute;
+      inset: 0;
+      padding-left: 46px;
+      padding-right: 6px;
+    }
+
+    .timeline-event {
+      position: absolute;
+      left: 46px;
+      width: 200px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: rgba(30, 144, 255, 0.16);
+      border: 1px solid rgba(30, 144, 255, 0.4);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      transform: translateY(50%);
+      backdrop-filter: blur(2px);
+    }
+
+    .timeline-event .time {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .timeline-event .label {
+      font-size: 0.78rem;
+      color: var(--text-soft);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-event.dimmed {
+      opacity: 0.5;
     }
   </style>
 </head>
@@ -447,14 +573,35 @@
           </div>
         </div>
 
-        <div class="events-list" id="eventsList">
-          <!-- Dynamic -->
-        </div>
+        <div class="events-layout">
+          <div class="events-column">
+            <div class="events-list" id="eventsList">
+              <!-- Dynamic -->
+            </div>
 
-        <p class="hint">
-          Parser automatically strips: <code>{time:...}</code>, <code>{spell:ID}</code>, <code>|cffXXXXXX</code>, <code>|r</code>, <code>{text}</code>, <code>{/text}</code>.<br>
-          <code>{everyone}everyone {text}Personals{/text}</code> becomes e.g. "Everyone Personals" for the event label.
-        </p>
+            <p class="hint">
+              Parser automatically strips: <code>{time:...}</code>, <code>{spell:ID}</code>, <code>|cffXXXXXX</code>, <code>|r</code>, <code>{text}</code>, <code>{/text}</code>.<br>
+              <code>{everyone}everyone {text}Personals{/text}</code> becomes e.g. "Everyone Personals" for the event label.
+            </p>
+          </div>
+
+          <div class="timeline-panel">
+            <div class="timeline-header">
+              <div>
+                <div class="timeline-title">Zeitstrahl · logarithmisch</div>
+                <div class="timeline-subtitle">Jetzt unten · +10s Mitte · +60s oben</div>
+              </div>
+            </div>
+
+            <div class="timeline-axis" id="timelineAxis">
+              <div class="timeline-line"></div>
+              <div class="timeline-marker" id="timelineMarkerNow" style="bottom: 0%">Jetzt</div>
+              <div class="timeline-marker middle" id="timelineMarkerMid">10s</div>
+              <div class="timeline-marker" id="timelineMarkerTop" style="bottom: 100%">+60s</div>
+              <div class="timeline-track" id="timelineTrack"></div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -552,6 +699,9 @@
     const wowheadToggle = document.getElementById("wowheadToggle");
     const hideOthersBtn = document.getElementById("hideOthersBtn");
     const exportBtn = document.getElementById("exportBtn");
+    const timelineAxis = document.getElementById("timelineAxis");
+    const timelineTrack = document.getElementById("timelineTrack");
+    const timelineMarkerMid = document.getElementById("timelineMarkerMid");
 
     // ==== Helpers =====================================================
     function formatTime(sec) {
@@ -633,6 +783,21 @@
       const spellsText = joinSpellNames(spellIds);
       if (!spellsText) return base;
       return `${base}: ${spellsText}`;
+    }
+
+    // Timeline setup (logarithmic with 10s at the midpoint and 60s ceiling)
+    const TIMELINE_WINDOW = 60;
+    const TIMELINE_FOCUS = 10;
+    const LOG_SHAPE =
+      Math.log(0.5) / Math.log(Math.log1p(TIMELINE_FOCUS) / Math.log1p(TIMELINE_WINDOW));
+    const TIMELINE_CARD_WIDTH = 200;
+    const TIMELINE_CARD_GAP = 10;
+    const TIMELINE_VERTICAL_GAP = 72;
+
+    function computeTimelinePosition(secondsAhead) {
+      const clamped = Math.max(0, Math.min(TIMELINE_WINDOW, secondsAhead));
+      const base = Math.log1p(clamped) / Math.log1p(TIMELINE_WINDOW);
+      return Math.pow(base, LOG_SHAPE);
     }
 
     // ==== Parsing of your format ======================================
@@ -840,6 +1005,72 @@
 
         eventsList.appendChild(row);
       }
+
+      renderTimeline(getCurrentFightSec());
+    }
+
+    function renderTimeline(currentSec) {
+      if (!timelineTrack) return;
+      const filter = actorFilter.value;
+      const selectedActor = filter === "__all__" ? null : filter;
+
+      const midPos = computeTimelinePosition(TIMELINE_FOCUS) * 100;
+      timelineMarkerMid.style.bottom = `${midPos}%`;
+
+      timelineTrack.innerHTML = "";
+      const axisHeight = timelineAxis ? timelineAxis.clientHeight : 0;
+      const placedColumns = [];
+      const resolveColumn = (posPx) => {
+        for (let col = 0; ; col += 1) {
+          if (!placedColumns[col]) {
+            placedColumns[col] = [posPx];
+            return col;
+          }
+          const clashes = placedColumns[col].some((p) => Math.abs(p - posPx) < TIMELINE_VERTICAL_GAP);
+          if (!clashes) {
+            placedColumns[col].push(posPx);
+            return col;
+          }
+        }
+      };
+      const upcoming = events.filter((ev) => {
+        if (!ev.enabled) return false;
+        if (ev.timeSec < currentSec || ev.timeSec > currentSec + TIMELINE_WINDOW) return false;
+
+        if (selectedActor && hideOthers && !containsActor(ev, selectedActor)) return false;
+        return true;
+      });
+
+      for (const ev of upcoming) {
+        const card = document.createElement("div");
+        card.className = "timeline-event";
+        if (selectedActor && !containsActor(ev, selectedActor)) card.classList.add("dimmed");
+
+        const ahead = Math.max(0, ev.timeSec - currentSec);
+        const pos = computeTimelinePosition(ahead) * 100;
+        const posPx = axisHeight ? (axisHeight * pos) / 100 : 0;
+        const column = resolveColumn(posPx);
+        const horizontalOffset = column * (TIMELINE_CARD_WIDTH + TIMELINE_CARD_GAP);
+        card.style.bottom = `${pos}%`;
+        card.style.left = `${46 + horizontalOffset}px`;
+
+        const timeEl = document.createElement("span");
+        timeEl.className = "time";
+        timeEl.textContent = `+${Math.round(ahead)}s`;
+
+        const labelEl = document.createElement("div");
+        labelEl.className = "label";
+        let displayLabel = ev.label;
+        if (selectedActor) {
+          const actorEntry = ev.actors.find((a) => a.name === selectedActor);
+          if (actorEntry) displayLabel = buildActorSpellText(actorEntry.name, actorEntry.spellIds);
+        }
+        labelEl.textContent = displayLabel;
+
+        card.appendChild(timeEl);
+        card.appendChild(labelEl);
+        timelineTrack.appendChild(card);
+      }
     }
 
     function handleTimeEdit(ev, input) {
@@ -927,6 +1158,7 @@
       const sec = getCurrentFightSec();
       timerDisplay.textContent = formatTime(sec);
       checkEventTriggers(sec);
+      renderTimeline(sec);
       rafId = requestAnimationFrame(updateTimerLoop);
     }
 
@@ -1027,6 +1259,7 @@
       timerStart = null;
       if (rafId) cancelAnimationFrame(rafId);
       setStatus("Timer paused", false);
+      renderTimeline(getCurrentFightSec());
     });
 
     resetBtn.addEventListener("click", () => {
@@ -1041,11 +1274,13 @@
       }
       renderEvents();
       setStatus("Timer reset", false);
+      renderTimeline(0);
     });
 
     // Initial state
     updateHideOthersButton();
     setStatus("Timer ready", false);
+    renderTimeline(0);
   </script>
 </body>
 </html>
