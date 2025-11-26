@@ -1277,6 +1277,34 @@
       renderTimeline(0);
     });
 
+    // ==== Global hotkeys (F9/F10/F11) ================================
+    // Listen globally for the three function keys and forward them to the
+    // existing buttons. Using "keydown" with capture=true and an early return
+    // for modifiers prevents side-effects with in-page shortcuts or form
+    // controls. repeat-check avoids spamming when a key is held down.
+    const HOTKEY_TARGETS = {
+      F9: startBtn,
+      F10: pauseBtn,
+      F11: resetBtn,
+    };
+
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.defaultPrevented || event.repeat) return;
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+        const target = HOTKEY_TARGETS[event.code];
+        if (!target) return;
+
+        // Prevent the browser from using the function key (e.g. F11 fullscreen)
+        // and forward the intent to the respective control button.
+        event.preventDefault();
+        target.click();
+      },
+      { capture: true }
+    );
+
     // Initial state
     updateHideOthersButton();
     setStatus("Timer ready", false);
